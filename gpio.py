@@ -314,7 +314,7 @@ class LED:
             If the pin is not PWM.
         """
         if self.led.pinType == "pwm":
-            for i in range(0, 1023, 9):
+            for i in range(0, 1023, 3):
                 self.led.write(i)
                 sleep(0.02)
             self.led.write(1023)
@@ -332,7 +332,7 @@ class LED:
             If the pin is not PWM.
         """
         if self.led.pinType == "pwm":
-            for i in range(1023, 0, -9):
+            for i in range(1023, 0, -3):
                 self.led.write(i)
                 sleep(0.02)
             self.led.write(0)

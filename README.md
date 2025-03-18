@@ -20,21 +20,22 @@ The `GPIO` class allows you to initialize and control GPIO pins. It supports dig
 from gpio import GPIO
 
 # Digital pin as output
-led = GPIO(14, pinType="digital", mode="OUT")
+led = GPIO(14, GPIO.DIG, GPIO.OUT)
 
 # Analog pin
-adc = GPIO(35, pinType="analog")
+adc = GPIO(35, GPIO.ADC)
 
 # PWM pin
-pwm_led = GPIO(25, pinType="pwm")
+pwm_led = GPIO(25, GPIO.PWM)
 ```
 
 #### Methods
 
 - `flash(t=1)`: Flash the digital output pin for `t` seconds.
 - `read()`: Read the value from the pin.
-- `write(state=None, dutyCycle=65535)`: Write a value to the pin.
+- `write(value=None)`: Write a value to the pin.
 - `toggle()`: Toggle the digital output pin.
+- `attach_interrupt(trigger, callback)`: Attach an interrupt to the GPIO pin.
 
 ### LED Class
 
@@ -46,10 +47,10 @@ The `LED` class allows you to control an LED with digital or PWM pins.
 from gpio import LED
 
 # Digital LED
-led = LED(14, pinType="digital")
+led = LED(14, GPIO.DIG)
 
 # PWM LED
-pwm_led = LED(25, pinType="pwm")
+pwm_led = LED(25, GPIO.PWM)
 ```
 
 #### Methods
@@ -59,6 +60,7 @@ pwm_led = LED(25, pinType="pwm")
 - `fadeIn()`: Gradually increase the brightness of the LED.
 - `fadeOut()`: Gradually decrease the brightness of the LED.
 - `morsecode(msg="SOS")`: Flash the LED in Morse code for the given message.
+- `setMorseSpeed(speed)`: Set the speed of the Morse code in words per minute.
 
 ### Servo Class
 
@@ -100,6 +102,7 @@ stepper = Stepper(step_pin=17, dir_pin=18, sleep_pin=19)
 - `rel_angle(angle)`: Rotate the motor by a relative angle.
 - `abs_angle(angle)`: Rotate the motor to an absolute angle.
 - `revolution(rev_count)`: Rotate the motor by a specified number of revolutions.
+- `set_step_time(us)`: Set the time between steps in microseconds.
 
 ### StepperULN Class
 
@@ -118,22 +121,6 @@ stepper_uln = StepperULN(pin1=25, pin2=26, pin3=27, pin4=28, delay=5, mode=Stepp
 - `step(count, direction=1)`: Move the motor by a specified number of steps.
 - `angle(r, direction=1)`: Rotate the motor by a specified angle.
 - `reset()`: Reset the motor pins to low state.
-
-### Example
-
-The `main.py` file provides an example of how to use the `StepperULN` class.
-
-```python
-from gpio import StepperULN
-from time import sleep
-
-stepper_uln = StepperULN(pin1=25, pin2=26, pin3=27, pin4=28, delay=5, mode=StepperULN.HALFSTEP)
-
-stepper_uln.angle(90)
-sleep(1)
-stepper_uln.angle(-90)
-stepper_uln.reset()
-```
 
 ### UltraSonic Class
 
@@ -157,3 +144,16 @@ ultrasonic = UltraSonic(trigger_pin=20, echo_pin=21)
 The `Joystick` class allows you to read values from a joystick.
 
 #### Initialization
+
+```python
+from gpio import Joystick
+
+joystick = Joystick(x=22, y=23, btn=24)
+```
+
+#### Methods
+
+- `read()`: Read the joystick's X, Y, and button states. Returns a tuple `(x, y, btn)` where:
+  - `x`: ADC value of the X-axis.
+  - `y`: ADC value of the Y-axis.
+  - `btn`: Button state (1 for pressed, 0 for not pressed).

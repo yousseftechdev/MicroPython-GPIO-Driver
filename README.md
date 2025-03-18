@@ -26,7 +26,7 @@ led = GPIO(14, GPIO.DIG, GPIO.OUT)
 adc = GPIO(35, GPIO.ADC)
 
 # PWM pin
-pwm_led = GPIO(25, GPIO.PWM)
+pwmLed = GPIO(25, GPIO.PWM)
 ```
 
 #### Methods
@@ -35,7 +35,7 @@ pwm_led = GPIO(25, GPIO.PWM)
 - `read()`: Read the value from the pin.
 - `write(value=None)`: Write a value to the pin.
 - `toggle()`: Toggle the digital output pin.
-- `attach_interrupt(trigger, callback)`: Attach an interrupt to the GPIO pin.
+- `attachInterrupt(trigger, callback)`: Attach an interrupt to the GPIO pin.
 
 ### LED Class
 
@@ -50,7 +50,7 @@ from gpio import LED
 led = LED(14, GPIO.DIG)
 
 # PWM LED
-pwm_led = LED(25, GPIO.PWM)
+pwmLed = LED(25, GPIO.PWM)
 ```
 
 #### Methods
@@ -59,7 +59,7 @@ pwm_led = LED(25, GPIO.PWM)
 - `blink(n, t=0.15)`: Blink the LED `n` times with `t` seconds between blinks.
 - `fadeIn()`: Gradually increase the brightness of the LED.
 - `fadeOut()`: Gradually decrease the brightness of the LED.
-- `morsecode(msg="SOS")`: Flash the LED in Morse code for the given message.
+- `morseCode(msg="SOS")`: Flash the LED in Morse code for the given message.
 - `setMorseSpeed(speed)`: Set the speed of the Morse code in words per minute.
 
 ### Servo Class
@@ -91,18 +91,18 @@ The `Stepper` class allows you to control a stepper motor.
 ```python
 from gpio import Stepper
 
-stepper = Stepper(step_pin=17, dir_pin=18, sleep_pin=19)
+stepper = Stepper(stepPin=17, dirPin=18, sleepPin=19)
 ```
 
 #### Methods
 
-- `power_on()`: Enable the stepper motor.
-- `power_off()`: Disable the stepper motor.
-- `steps(step_count)`: Move the motor by a specified number of steps.
-- `rel_angle(angle)`: Rotate the motor by a relative angle.
-- `abs_angle(angle)`: Rotate the motor to an absolute angle.
-- `revolution(rev_count)`: Rotate the motor by a specified number of revolutions.
-- `set_step_time(us)`: Set the time between steps in microseconds.
+- `powerOn()`: Enable the stepper motor.
+- `powerOff()`: Disable the stepper motor.
+- `steps(stepCount)`: Move the motor by a specified number of steps.
+- `relAngle(angle)`: Rotate the motor by a relative angle.
+- `absAngle(angle)`: Rotate the motor to an absolute angle.
+- `revolution(revCount)`: Rotate the motor by a specified number of revolutions.
+- `setStepTime(us)`: Set the time between steps in microseconds.
 
 ### StepperULN Class
 
@@ -113,7 +113,7 @@ The `StepperULN` class allows you to control a stepper motor using a ULN2003 dri
 ```python
 from gpio import StepperULN
 
-stepper_uln = StepperULN(pin1=25, pin2=26, pin3=27, pin4=28, delay=5, mode=StepperULN.HALFSTEP)
+stepperULN = StepperULN(pin1=25, pin2=26, pin3=27, pin4=28, delay=5, mode=StepperULN.HALFSTEP)
 ```
 
 #### Methods
@@ -131,13 +131,13 @@ The `UltraSonic` class allows you to measure distances using an ultrasonic senso
 ```python
 from gpio import UltraSonic
 
-ultrasonic = UltraSonic(trigger_pin=20, echo_pin=21)
+ultraSonic = UltraSonic(triggerPin=20, echoPin=21)
 ```
 
 #### Methods
 
-- `get_distance_mm()`: Get the distance in millimeters.
-- `get_distance_cm()`: Get the distance in centimeters.
+- `getDistanceMm()`: Get the distance in millimeters.
+- `getDistanceCm()`: Get the distance in centimeters.
 
 ### Joystick Class
 
@@ -157,3 +157,9 @@ joystick = Joystick(x=22, y=23, btn=24)
   - `x`: ADC value of the X-axis.
   - `y`: ADC value of the Y-axis.
   - `btn`: Button state (1 for pressed, 0 for not pressed).
+- `calibrate()`: Calibrate the joystick to set the center position.
+- `isPressed()`: Check if the joystick button is pressed. Returns `True` if pressed, otherwise `False`.
+- `setSensitivity(level)`: Set the sensitivity level of the joystick. Higher levels make the joystick more responsive.
+- `getDirection()`: Get the direction of the joystick movement. Returns one of `["UP", "DOWN", "LEFT", "RIGHT", "CENTER"]`.
+- `onMove(callback)`: Register a callback function that is triggered when the joystick is moved. The callback receives the x and y values as an arguments.
+- `onButtonPress(callback)`: Register a callback function that is triggered when the joystick button is pressed.

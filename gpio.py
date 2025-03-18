@@ -210,7 +210,7 @@ class GPIO:
         else:
             raise TypeError("Pin has to be digital and set as OUT")
 
-    def attach_interrupt(self, trigger, callback):
+    def attachInterrupt(self, trigger, callback):
         """
         Attach an interrupt to the GPIO pin.
 
@@ -261,7 +261,8 @@ class LED:
         if pinType == "digital":
             self.led = GPIO(pin, GPIO.DIG, mode="OUT")
         elif pinType == "pwm":
-            self.led = GPIO(pin, GPIO.PWM, pwmFreq=freq)
+            self.led = GPIO(pin, GPIO.PWM)
+            self.led.setFreq(freq)
     
     def flash(self, t=1):
         """
@@ -432,7 +433,8 @@ class Servo:
         maxAngle : int, optional
             Maximum angle of the servo (default is 180).
         """
-        self.pwm = GPIO(pin, GPIO.PWM, pwmFreq=freq)
+        self.pwm = GPIO(pin, GPIO.PWM)
+        self.pwm.setFreq(freq)
         self.mode = mode
         self.minUs = minUs
         self.maxUs = maxUs
@@ -533,10 +535,10 @@ class Stepper:
         self.steps_per_rev = 200
         self.current_position = 0
 
-    def power_on(self):
+    def powerOn(self):
         self.slp.write(1)
 
-    def power_off(self):
+    def powerOff(self):
         self.slp.write(0)
         self.current_position = 0
 
@@ -549,11 +551,11 @@ class Stepper:
             sleep_us(self.step_time)
         self.current_position += step_count
 
-    def rel_angle(self, angle):
+    def relAngle(self, angle):
         steps = int(angle / 360 * self.steps_per_rev)
         self.steps(steps)
 
-    def abs_angle(self, angle):
+    def absAngle(self, angle):
         steps = int(angle / 360 * self.steps_per_rev)
         steps -= self.current_position % self.steps_per_rev
         self.steps(steps)
@@ -561,7 +563,7 @@ class Stepper:
     def revolution(self, rev_count):
         self.steps(rev_count * self.steps_per_rev)
 
-    def set_step_time(self, us):
+    def setStepTime(self, us):
         if us < 20:
             self.step_time = 20
         else:
@@ -694,7 +696,7 @@ class UltraSonic:
         self.trigger.write(0)
         self.echo = GPIO(echo_pin, GPIO.DIG, GPIO.IN)
 
-    def _send_pulse_and_wait(self):
+    def _sendPulseAndWait(self):
         # Send the pulse to trigger and listen on echo pin.
         self.trigger.write(0) # Stabilize the sensor
         sleep_us(5)
@@ -710,12 +712,12 @@ class UltraSonic:
                 raise OSError('Out of range')
             raise ex
 
-    def get_distance_mm(self):
+    def getDistanceMm(self):
         pulse_time = self._send_pulse_and_wait() 
         mm = pulse_time * 100 // 582
         return mm
 
-    def get_distance_cm(self):
+    def getDistanceCm(self):
         return (self.get_distance_mm()/10)
 
 
@@ -731,15 +733,242 @@ class Joystick:
         GPIO object for the Y-axis.
     jsb : GPIO
         GPIO object for the button.
+    deadzone : int
+        Deadzone threshold for the joystick.
+    sensitivityX : float
+        Sensitivity for the X-axis.
+    sensitivityY : float
+        Sensitivity for the Y-axis.
+    centerX : int
+        Calibrated center position for the X-axis.
+    centerY : int
+        Calibrated center position for the Y-axis.
+    moveCallback : function
+        Callback function for joystick movement.
+    buttonCallback : function
+        Callback function for button presses.
+    lastX : int
+        Last X-axis value to detect changes.
+    lastY : int
+        Last Y-axis value to detect changes.
+    lastBtn : int
+        Last button state to detect changes.
+    mapRange : tuple
+        Range to map joystick readings to (default is None).
     """
-    def __init__(self, x, y, btn):
+
+    def __init__(self, x, y, btn, deadzone=100, mapRange=None):
+        """
+        Initialize the joystick.
+
+        Parameters:
+        -----------
+        x : int
+            Pin number for the X-axis.
+        y : int
+            Pin number for the Y-axis.
+        btn : int
+            Pin number for the button.
+        deadzone : int, optional
+            Deadzone threshold for the joystick (default is 100).
+        mapRange : tuple, optional
+            Range to map joystick readings to (e.g., (-1, 1), default is None).
+        """
         self.jsx = GPIO(x, GPIO.ADC)
         self.jsy = GPIO(y, GPIO.ADC)
         self.jsb = GPIO(btn, GPIO.DIG, GPIO.IN_PULLUP)
+        self.deadzone = deadzone
+        self.sensitivityX = 1.0
+        self.sensitivityY = 1.0
+        self.centerX = 32768  # Assuming 16-bit ADC
+        self.centerY = 32768
+        self.moveCallback = None
+        self.buttonCallback = None
+        self.lastX = None
+        self.lastY = None
+        self.lastBtn = None
+        self.mapRange = mapRange
+
+    def mapValue(self, value, inMin, inMax, outMin, outMax):
+        """
+        Map a value from one range to another.
+
+        Parameters:
+        -----------
+        value : int
+            The value to map.
+        inMin : int
+            Minimum of the input range.
+        inMax : int
+            Maximum of the input range.
+        outMin : int
+            Minimum of the output range.
+        outMax : int
+            Maximum of the output range.
+
+        Returns:
+        --------
+        int
+            The mapped value.
+        """
+        return (value - inMin) * (outMax - outMin) // (inMax - inMin) + outMin
 
     def read(self):
-        h = self.jsx.read()
-        v = self.jsy.read()
-        if self.jsb.read() == 1: btn = 0
-        else: btn = 1
-        return (h, v, btn)
+        """
+        Read the joystick values.
+
+        Returns:
+        --------
+        tuple
+            The X and Y values and the button state.
+        """
+        x = self.jsx.read()
+        y = self.jsy.read()
+        btn = self.jsb.read()
+
+        if self.mapRange:
+            x = self.mapValue(x, 0, 65535, self.mapRange[0], self.mapRange[1])
+            y = self.mapValue(y, 0, 65535, self.mapRange[0], self.mapRange[1])
+
+        self.poll(x, y, btn)
+        return (x, y, btn)
+
+    def applyDeadzone(self, value):
+        """
+        Apply the deadzone to a joystick axis value.
+
+        Parameters:
+        -----------
+        value : int
+            The raw value from the joystick axis.
+
+        Returns:
+        --------
+        int
+            The adjusted value after applying the deadzone.
+        """
+        if abs(value - 32768) < self.deadzone:
+            return 32768
+        return value
+
+    def isButtonPressed(self):
+        """
+        Check if the joystick button is pressed with debouncing.
+
+        Returns:
+        --------
+        bool
+            True if the button is pressed, False otherwise.
+        """
+        state = self.jsb.read()
+        sleep_ms(10)  # Debounce delay
+        return state == 0 and self.jsb.read() == 0
+
+    def getDirection(self):
+        """
+        Get the direction of the joystick.
+
+        Returns:
+        --------
+        str
+            The direction of the joystick ("UP", "DOWN", "LEFT", "RIGHT", "CENTER").
+        """
+        x = self.applyDeadzone(self.jsx.read())
+        y = self.applyDeadzone(self.jsy.read())
+
+        if y > 40000: return "UP"
+        if y < 25000: return "DOWN"
+        if x > 40000: return "RIGHT"
+        if x < 25000: return "LEFT"
+        return "CENTER"
+
+    def calibrate(self):
+        """
+        Calibrate the joystick by setting the center position.
+        """
+        self.centerX = self.jsx.read()
+        self.centerY = self.jsy.read()
+
+    def readCalibrated(self):
+        """
+        Read the joystick values relative to the calibrated center.
+
+        Returns:
+        --------
+        tuple
+            The calibrated X and Y values.
+        """
+        x = self.jsx.read() - self.centerX
+        y = self.jsy.read() - self.centerY
+        return (x, y)
+
+    def onMove(self, callback):
+        """
+        Set a callback function for joystick movement.
+
+        Parameters:
+        -----------
+        callback : function
+            The function to call when the joystick moves.
+        """
+        self.moveCallback = callback
+
+    def onButtonPress(self, callback):
+        """
+        Set a callback function for button presses.
+
+        Parameters:
+        -----------
+        callback : function
+            The function to call when the button is pressed.
+        """
+        self.buttonCallback = callback
+
+    def poll(self, x, y, btn):
+        """
+        Poll the joystick for changes and trigger callbacks.
+
+        Parameters:
+        -----------
+        x : int
+            Current X-axis value.
+        y : int
+            Current Y-axis value.
+        btn : int
+            Current button state.
+        """
+        if (x != self.lastX or y != self.lastY) and self.moveCallback:
+            self.moveCallback(x, y)
+        if btn != self.lastBtn and self.buttonCallback and btn == 1:
+            self.buttonCallback()
+
+        self.lastX = x
+        self.lastY = y
+        self.lastBtn = btn
+
+    def setSensitivity(self, sensitivityX=1.0, sensitivityY=1.0):
+        """
+        Set the sensitivity for the joystick axes.
+
+        Parameters:
+        -----------
+        sensitivityX : float, optional
+            Sensitivity for the X-axis (default is 1.0).
+        sensitivityY : float, optional
+            Sensitivity for the Y-axis (default is 1.0).
+        """
+        self.sensitivityX = sensitivityX
+        self.sensitivityY = sensitivityY
+
+    def readWithSensitivity(self):
+        """
+        Read the joystick values with sensitivity applied.
+
+        Returns:
+        --------
+        tuple
+            The adjusted X and Y values.
+        """
+        x = self.jsx.read() * self.sensitivityX
+        y = self.jsy.read() * self.sensitivityY
+        return (x, y)

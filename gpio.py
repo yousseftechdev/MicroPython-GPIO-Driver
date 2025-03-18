@@ -1,5 +1,5 @@
-from machine import Pin, ADC, PWM
-from time import sleep
+from machine import Pin, ADC, PWM, time_pulse_us
+from time import sleep, sleep_ms, sleep_us
 
 CODE = {
     'A' : '.-',
@@ -63,10 +63,16 @@ class GPIO:
         The pin number.
     """
 
-    def __init__(self, pin, pinType="digital", mode="OUT", pwmFreq=1000):
+    DIG = "digital"
+    ADC = "analog"
+    PWM = "pwm"
+    OUT = "OUT"
+    IN = "IN"
+    IN_PULLUP = "IN_PULLUP"
+
+    def __init__(self, pin, pinType=DIG, mode=None):
         """
         Initialize the GPIO pin.
-        If only the pin number was provided then the pin will be set as digital and output.
 
         Parameters:
         -----------
@@ -75,9 +81,7 @@ class GPIO:
         pinType : str, optional
             The type of the pin (default is "digital").
         mode : str, optional
-            The mode of the pin (default is "OUT").
-        pwmFreq : int, optional
-            The PWM frequency (default is 1000).
+            The mode of the pin (default is None).
         """
         self.mode = mode
         self.pinType = pinType
@@ -92,22 +96,52 @@ class GPIO:
         elif pinType == "analog":
             self.pin = ADC(pin)
         elif pinType == "pwm":
-            self.pin = PWM(pin, pwmFreq)
+            self.pin = PWM(pin)
     
+    def init(self, mode=None):
+        """
+        Reinitialize the GPIO pin with a new mode.
+
+        Parameters:
+        -----------
+        mode : str, optional
+            The mode to set the pin to (e.g., "OUT", "IN", "IN_PULLUP").
+        """
+        if self.pinType == GPIO.DIG:
+            if mode == "OUT":
+                self.pin.init(Pin.OUT)
+            elif mode == "IN":
+                self.pin.init(Pin.IN)
+            elif mode == "IN_PULLUP":
+                self.pin.init(Pin.IN, Pin.PULL_UP)
+        else:
+            raise TypeError("Pin has to be set as digital")
+    
+    def setFreq(self, freq=1000):
+        """
+        Set the frequency for a PWM pin.
+
+        Parameters:
+        -----------
+        freq : int, optional
+            The frequency in Hz (default is 1000).
+
+        Raises:
+        -------
+        TypeError
+            If the pin is not a PWM pin.
+        """
+        if self.pinType == "pwm":
+            self.pin.freq(freq)
+
     def flash(self, t=1):
         """
-        Flash the digital output pin.
-        Default time is 1 second.
+        Flash the digital output pin for a specified duration.
 
         Parameters:
         -----------
         t : int, optional
             The duration to flash the pin in seconds (default is 1).
-
-        Raises:
-        -------
-        TypeError
-            If the pin is not digital and set as OUT.
         """
         if self.pinType == "digital" and self.mode == "OUT":
             print("Flashing pin number " + str(self.pinNumber) + "for " + str(t) + " Seconds")
@@ -126,47 +160,36 @@ class GPIO:
         --------
         int
             The value read from the pin.
-
-        Raises:
-        -------
-        TypeError
-            If the pin is not digital and set as IN or analog.
         """
         if self.pinType == "analog":
             return self.pin.read_u16()
         elif self.pinType == "digital" and self.mode == "IN":
             return self.pin.value()
+        elif self.pinType == "digital" and self.mode == "IN_PULLUP":
+            return self.pin.value()
         else:
             raise TypeError("Pin has to be either digital and set as IN or analog")
     
-    def write(self, state=None, dutyCycle=4095):
+    def write(self, value=None):
         """
         Write a value to the pin.
 
         Parameters:
         -----------
-        state : int, optional
-            The state to set the digital pin (0 or 1).
-        dutyCycle : int, optional
-            The duty cycle for the PWM pin (default is 65535).
-
-        Raises:
-        -------
-        ValueError
-            If the state is not 0 or 1, or if the duty cycle is out of range.
+        value : int, optional
         TypeError
             If the pin is not digital and set as OUT or PWM.
         """
         if self.pinType == "digital" and self.mode == "OUT":
-            if state == 0 or state == 1:
-                self.pin.value(state)
+            if value == 0 or value == 1:
+                self.pin.value(value)
             else:
                 raise ValueError("State has to either be 1 or 0")
         elif self.pinType == "pwm":
-            if dutyCycle > 1023 or dutyCycle < 0:
+            if value > 1023 or value < 0:
                 raise ValueError("Duty cycle must be between 0 and 1023")
             else:
-                self.pin.duty(dutyCycle)
+                self.pin.duty(value)
         else:
             raise TypeError("Pin has to be either digital and set as OUT or PWM")
     
@@ -187,6 +210,27 @@ class GPIO:
         else:
             raise TypeError("Pin has to be digital and set as OUT")
 
+    def attach_interrupt(self, trigger, callback):
+        """
+        Attach an interrupt to the GPIO pin.
+
+        Parameters:
+        -----------
+        trigger : int
+            The type of trigger for the interrupt (e.g., Pin.IRQ_RISING, Pin.IRQ_FALLING, or Pin.IRQ_RISING | Pin.IRQ_FALLING).
+        callback : function
+            The callback function to execute when the interrupt is triggered.
+
+        Raises:
+        -------
+        TypeError
+            If the pin is not digital or set as IN/IN_PULLUP.
+        """
+        if self.pinType == GPIO.DIG and (self.mode == GPIO.IN or self.mode == GPIO.IN_PULLUP):
+            self.pin.irq(trigger=trigger, handler=callback)
+        else:
+            raise TypeError("Interrupts can only be attached to digital pins set as IN or IN_PULLUP.")
+
 
 class LED:
     """
@@ -200,7 +244,7 @@ class LED:
         Words per minute for Morse code.
     """
 
-    def __init__(self, pin, pinType="digital", freq=1000):
+    def __init__(self, pin, pinType=GPIO.DIG, freq=1000):
         """
         Initialize the LED.
 
@@ -215,9 +259,9 @@ class LED:
         """
         self.wpm = 15
         if pinType == "digital":
-            self.led = GPIO(pin, pinType="digital", mode="OUT")
+            self.led = GPIO(pin, GPIO.DIG, mode="OUT")
         elif pinType == "pwm":
-            self.led = GPIO(pin, pinType="pwm", pwmFreq=freq)
+            self.led = GPIO(pin, GPIO.PWM, pwmFreq=freq)
     
     def flash(self, t=1):
         """
@@ -239,9 +283,9 @@ class LED:
             sleep(t)
             self.led.write(0)
         elif self.led.pinType == "pwm":
-            self.led.write(dutyCycle=1023)
+            self.led.write(1023)
             sleep(t)
-            self.led.write(dutyCycle=0)
+            self.led.write(0)
         else:
             raise TypeError("Pin has to be digital or PWM")
     
@@ -271,9 +315,9 @@ class LED:
         """
         if self.led.pinType == "pwm":
             for i in range(0, 1023, 9):
-                self.led.write(dutyCycle=i)
+                self.led.write(i)
                 sleep(0.02)
-            self.led.write(dutyCycle=1023)
+            self.led.write(1023)
             
         else:
             raise TypeError("Pin has to be PWM")
@@ -289,9 +333,9 @@ class LED:
         """
         if self.led.pinType == "pwm":
             for i in range(1023, 0, -9):
-                self.led.write(dutyCycle=i)
+                self.led.write(i)
                 sleep(0.02)
-            self.led.write(dutyCycle=0)
+            self.led.write(0)
         else:
             raise TypeError("Pin has to be PWM")
     
@@ -316,7 +360,7 @@ class LED:
         if self.led.pinType == "digital":
             self.led.write(0)
         elif self.led.pinType == "pwm":
-            self.led.write(dutyCycle=0)
+            self.led.write(0)
         else:
             raise TypeError("Pin has to be digital or PWM")
         for l in msg:
@@ -333,7 +377,7 @@ class LED:
         if self.led.pinType == "digital":
             self.led.write(0)
         elif self.led.pinType == "pwm":
-            self.led.write(dutyCycle=0)
+            self.led.write(0)
 
     def setMorseSpeed(self, speed):
         """
@@ -388,7 +432,7 @@ class Servo:
         maxAngle : int, optional
             Maximum angle of the servo (default is 180).
         """
-        self.pwm = GPIO(pin, pinType="pwm", pwmFreq=freq)
+        self.pwm = GPIO(pin, GPIO.PWM, pwmFreq=freq)
         self.mode = mode
         self.minUs = minUs
         self.maxUs = maxUs
@@ -430,7 +474,7 @@ class Servo:
             step = 1 if targetAngle > self.angle else -1
 
             for angle in range(self.angle, targetAngle + step, step):
-                self.pwm.write(dutyCycle=self._angleToDuty(angle))
+                self.pwm.write(self._angleToDuty(angle))
                 self.angle = angle
                 sleep(self.speed / 1000)  # Speed in milliseconds
 
@@ -460,3 +504,242 @@ class Servo:
         self.mode = "absolute"
         self.move(self.maxAngle)
         self.mode = tmp
+
+class Stepper:
+    """
+    A class to represent a stepper motor.
+
+    Attributes:
+    -----------
+    stp : GPIO
+        The GPIO object for the step pin.
+    dir : GPIO
+        The GPIO object for the direction pin.
+    slp : GPIO
+        The GPIO object for the sleep pin.
+    step_time : int
+        The time between steps in microseconds.
+    steps_per_rev : int
+        The number of steps per revolution.
+    current_position : int
+        The current position of the motor in steps.
+    """
+    def __init__(self, step_pin, dir_pin, sleep_pin):
+        self.stp = GPIO(step_pin, GPIO.DIG, GPIO.OUT)
+        self.dir = GPIO(dir_pin, GPIO.DIG, GPIO.OUT)
+        self.slp = GPIO(sleep_pin, GPIO.DIG, GPIO.OUT)
+
+        self.step_time = 20  # us
+        self.steps_per_rev = 200
+        self.current_position = 0
+
+    def power_on(self):
+        self.slp.write(1)
+
+    def power_off(self):
+        self.slp.write(0)
+        self.current_position = 0
+
+    def steps(self, step_count):
+        self.dir.write(1 if step_count > 0 else 0)
+        for i in range(abs(step_count)):
+            self.stp.write(1)
+            sleep_us(self.step_time)
+            self.stp.write(0)
+            sleep_us(self.step_time)
+        self.current_position += step_count
+
+    def rel_angle(self, angle):
+        steps = int(angle / 360 * self.steps_per_rev)
+        self.steps(steps)
+
+    def abs_angle(self, angle):
+        steps = int(angle / 360 * self.steps_per_rev)
+        steps -= self.current_position % self.steps_per_rev
+        self.steps(steps)
+
+    def revolution(self, rev_count):
+        self.steps(rev_count * self.steps_per_rev)
+
+    def set_step_time(self, us):
+        if us < 20:
+            self.step_time = 20
+        else:
+            self.step_time = us
+
+class StepperULN:
+    """
+    A class to represent a stepper motor controlled by a ULN2003 driver.
+
+    Attributes:
+    -----------
+    pin1, pin2, pin3, pin4 : GPIO
+        GPIO objects for the motor control pins.
+    delay : int
+        Delay between steps in milliseconds.
+    mode : list
+        Step sequence for the motor (full-step or half-step).
+    """
+    FULL_ROTATION = int(4075.7728395061727 / 8) # http://www.jangeox.be/2013/10/stepper-motor-28byj-48_25.html
+
+    HALF_STEP = [
+        [0, 0, 0, 1],
+        [0, 0, 1, 1],
+        [0, 0, 1, 0],
+        [0, 1, 1, 0],
+        [0, 1, 0, 0],
+        [1, 1, 0, 0],
+        [1, 0, 0, 0],
+        [1, 0, 0, 1],
+    ]
+
+    FULL_STEP = [
+        [1, 0, 1, 0],
+        [0, 1, 1, 0],
+        [0, 1, 0, 1],
+        [1, 0, 0, 1]
+    ]
+
+    FULLSTEP = "fs"
+    HALFSTEP = "hs"
+
+    def __init__(self, pin1, pin2, pin3, pin4, delay, mode=FULLSTEP):
+        """
+        Initialize the stepper motor.
+
+        Parameters:
+        -----------
+        pin1, pin2, pin3, pin4 : int
+            Pin numbers for the motor control.
+        delay : int
+            Delay between steps in milliseconds.
+        mode : str, optional
+            Step mode (FULLSTEP or HALFSTEP, default is FULLSTEP).
+        """
+        if mode == "fs":
+            self.mode = self.FULL_STEP
+        elif mode == "hs":
+            self.mode = self.HALF_STEP
+        else:
+            raise ValueError("Mode must be either 0 or 1")
+        self.pin1 = GPIO(pin1, GPIO.DIG, GPIO.OUT)
+        self.pin2 = GPIO(pin2, GPIO.DIG, GPIO.OUT)
+        self.pin3 = GPIO(pin3, GPIO.DIG, GPIO.OUT)
+        self.pin4 = GPIO(pin4, GPIO.DIG, GPIO.OUT)
+        self.delay = delay
+        
+        self.reset()
+        
+    def step(self, count, direction=1):
+        """
+        Move the motor by a specified number of steps.
+
+        Parameters:
+        -----------
+        count : int
+            Number of steps to move.
+        direction : int, optional
+            Direction of movement (1 for forward, -1 for backward, default is 1).
+        """
+        if count<0:
+            direction = -1
+            count = -count
+        for x in range(count):
+            for bit in self.mode[::direction]:
+                self.pin1.write(bit[0])
+                self.pin2.write(bit[1])
+                self.pin3.write(bit[2])
+                self.pin4.write(bit[3])
+                sleep_ms(self.delay)
+        self.reset()
+
+    def angle(self, r, direction=1):
+        """
+        Rotate the motor by a specified angle.
+
+        Parameters:
+        -----------
+        r : float
+            Angle in degrees.
+        direction : int, optional
+            Direction of rotation (1 for forward, -1 for backward, default is 1).
+        """
+        self.step(int(self.FULL_ROTATION * r / 360), direction)
+
+    def reset(self):
+        """
+        Reset the motor pins to low state.
+        """
+        self.pin1(0) 
+        self.pin2(0) 
+        self.pin3(0) 
+        self.pin4(0)
+
+class UltraSonic:
+    """
+    A class to represent an ultrasonic distance sensor.
+
+    Attributes:
+    -----------
+    trigger : GPIO
+        GPIO object for the trigger pin.
+    echo : GPIO
+        GPIO object for the echo pin.
+    echo_timeout_us : int
+        Timeout for the echo signal in microseconds.
+    """
+    def __init__(self, trigger_pin=12, echo_pin=14):
+        self.echo_timeout_us = 500*2*30
+        self.trigger = GPIO(trigger_pin, GPIO.DIG, GPIO.OUT)
+        self.trigger.write(0)
+        self.echo = GPIO(echo_pin, GPIO.DIG, GPIO.IN)
+
+    def _send_pulse_and_wait(self):
+        # Send the pulse to trigger and listen on echo pin.
+        self.trigger.write(0) # Stabilize the sensor
+        sleep_us(5)
+        self.trigger.write(1)
+        # Send a 10us pulse.
+        sleep_us(10)
+        self.trigger.write(0)
+        try:
+            pulse_time = time_pulse_us(self.echo, 1, self.echo_timeout_us)
+            return pulse_time
+        except OSError as ex:
+            if ex.args[0] == 110:
+                raise OSError('Out of range')
+            raise ex
+
+    def get_distance_mm(self):
+        pulse_time = self._send_pulse_and_wait() 
+        mm = pulse_time * 100 // 582
+        return mm
+
+    def get_distance_cm(self):
+        return (self.get_distance_mm()/10)
+
+
+class Joystick:
+    """
+    A class to represent a joystick.
+
+    Attributes:
+    -----------
+    jsx : GPIO
+        GPIO object for the X-axis.
+    jsy : GPIO
+        GPIO object for the Y-axis.
+    jsb : GPIO
+        GPIO object for the button.
+    """
+    def __init__(self, x, y, btn):
+        self.jsx = GPIO(x, GPIO.ADC)
+        self.jsy = GPIO(y, GPIO.ADC)
+        self.jsb = GPIO(btn, GPIO.DIG, GPIO.IN_PULLUP)
+
+    def read(self):
+        h = self.jsx.read()
+        v = self.jsy.read()
+        if self.jsb.read() == 1: btn = 0
+        else: btn = 1
+        return (h, v, btn)

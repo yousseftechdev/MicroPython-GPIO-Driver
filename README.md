@@ -1,12 +1,12 @@
 # MicroPython GPIO Driver
 
-This project provides a simple GPIO driver for MicroPython, allowing you to easily control digital, analog, and PWM pins on your microcontroller.
+This project provides a simple GPIO driver for MicroPython, allowing you to easily control digital, analog, PWM pins, and various peripherals on your microcontroller.
 
 ## Files
 
 - `boot.py`: Entry point for the MicroPython script.
-- `gpio.py`: Contains the `GPIO`, `LED`, and `Servo` classes for handling different types of pins.
-- `main.py`: Example usage of the `GPIO`, `LED`, and `Servo` classes.
+- `gpio.py`: Contains the `GPIO`, `LED`, `Servo`, `Stepper`, `StepperULN`, `UltraSonic`, and `Joystick` classes.
+- `main.py`: Example usage of the classes.
 
 ## Usage
 
@@ -80,44 +80,80 @@ servo = Servo(16)
 - `mid()`: Move the servo to the 90 degree position.
 - `max()`: Move the servo to the max degree position.
 
-### Example
+### Stepper Class
 
-The `main.py` file provides an example of how to use the `GPIO`, `LED`, and `Servo` classes.
+The `Stepper` class allows you to control a stepper motor.
+
+#### Initialization
 
 ```python
-from gpio import GPIO, LED, Servo
-from time import sleep
+from gpio import Stepper
 
-def main() -> None:
-    adc = GPIO(35, pinType="analog")
-    digpin = GPIO(12, pinType="digital", mode="IN")
-    led = GPIO(14, pinType="pwm")
-    led2 = GPIO(4, pinType="digital", mode="OUT")
-    led3 = LED(15, pinType="pwm")
-    servo = Servo(16)
-
-    print(adc.read())
-    print(digpin.read())
-    led.write(dutyCycle=10)
-
-    led3.fadeIn()
-    sleep(1)
-    led3.fadeOut()
-
-    servo.move(90)
-    sleep(1)
-    servo.move(0)
-
-    while True:
-        led2.toggle()
-        sleep(1)
-        led2.toggle()
-        sleep(1)
-
-if __name__ == "__main__":
-    main()
+stepper = Stepper(step_pin=17, dir_pin=18, sleep_pin=19)
 ```
 
-## License
+#### Methods
 
-This project is licensed under the MIT License.
+- `power_on()`: Enable the stepper motor.
+- `power_off()`: Disable the stepper motor.
+- `steps(step_count)`: Move the motor by a specified number of steps.
+- `rel_angle(angle)`: Rotate the motor by a relative angle.
+- `abs_angle(angle)`: Rotate the motor to an absolute angle.
+- `revolution(rev_count)`: Rotate the motor by a specified number of revolutions.
+
+### StepperULN Class
+
+The `StepperULN` class allows you to control a stepper motor using a ULN2003 driver.
+
+#### Initialization
+
+```python
+from gpio import StepperULN
+
+stepper_uln = StepperULN(pin1=25, pin2=26, pin3=27, pin4=28, delay=5, mode=StepperULN.HALFSTEP)
+```
+
+#### Methods
+
+- `step(count, direction=1)`: Move the motor by a specified number of steps.
+- `angle(r, direction=1)`: Rotate the motor by a specified angle.
+- `reset()`: Reset the motor pins to low state.
+
+### Example
+
+The `main.py` file provides an example of how to use the `StepperULN` class.
+
+```python
+from gpio import StepperULN
+from time import sleep
+
+stepper_uln = StepperULN(pin1=25, pin2=26, pin3=27, pin4=28, delay=5, mode=StepperULN.HALFSTEP)
+
+stepper_uln.angle(90)
+sleep(1)
+stepper_uln.angle(-90)
+stepper_uln.reset()
+```
+
+### UltraSonic Class
+
+The `UltraSonic` class allows you to measure distances using an ultrasonic sensor.
+
+#### Initialization
+
+```python
+from gpio import UltraSonic
+
+ultrasonic = UltraSonic(trigger_pin=20, echo_pin=21)
+```
+
+#### Methods
+
+- `get_distance_mm()`: Get the distance in millimeters.
+- `get_distance_cm()`: Get the distance in centimeters.
+
+### Joystick Class
+
+The `Joystick` class allows you to read values from a joystick.
+
+#### Initialization

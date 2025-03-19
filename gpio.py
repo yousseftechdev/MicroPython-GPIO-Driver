@@ -529,8 +529,11 @@ class Servo:
     speed : int
         Speed of the servo movement.
     """
+    
+    ABS = "absolute"
+    REL = "relative"
 
-    def __init__(self, pin, mode="absolute", freq=50, minUs=500, maxUs=2500, maxAngle=180):
+    def __init__(self, pin, mode=ABS, freq=50, minUs=500, maxUs=2500, maxAngle=180):
         """
         Initialize the Servo motor.
 
@@ -595,6 +598,11 @@ class Servo:
                 self.pwm.write(self._angleToDuty(angle))
                 self.angle = angle
                 sleep(self.speed / 1000)  # Speed in milliseconds
+    
+    def setMode(self, mode):
+        if mode in (self.ABS, self.REL):
+            self.mode = mode
+            
 
     def reset(self):
         """
@@ -807,6 +815,16 @@ class UltraSonic:
         Timeout for the echo signal in microseconds.
     """
     def __init__(self, trigger_pin=12, echo_pin=14):
+        """
+        Initializes the GPIO driver for a trigger and echo pin setup.
+        Args:
+            trigger_pin (int, optional): The GPIO pin number used for the trigger signal. Defaults to 12.
+            echo_pin (int, optional): The GPIO pin number used for the echo signal. Defaults to 14.
+        Attributes:
+            echo_timeout_us (int): Timeout value in microseconds for the echo signal.
+            trigger (GPIO): GPIO object configured for the trigger pin in output mode.
+            echo (GPIO): GPIO object configured for the echo pin in input mode.
+        """
         self.echo_timeout_us = 500*2*30
         self.trigger = GPIO(trigger_pin, GPIO.DIG, GPIO.OUT)
         self.trigger.write(0)
@@ -828,13 +846,13 @@ class UltraSonic:
                 raise OSError('Out of range')
             raise ex
 
-    def get_distance_mm(self):
+    def getDistanceMm(self):
         pulse_time = self._send_pulse_and_wait() 
         mm = pulse_time * 100 // 582
         return mm
 
-    def get_distance_cm(self):
-        return (self.get_distance_mm()/10)
+    def getDistanceCm(self):
+        return (self.getDistanceMm()/10)
 
 
 class Joystick:
@@ -851,6 +869,10 @@ class Joystick:
         GPIO object for the button.
     """
     def __init__(self, x, y, btn):
+        """
+        Initialize the joystick.
+        
+        """
         self.jsx = GPIO(x, GPIO.ADC)
         self.jsy = GPIO(y, GPIO.ADC)
         self.jsb = GPIO(btn, GPIO.DIG, GPIO.IN_PULLUP)
@@ -861,6 +883,14 @@ class Joystick:
         if self.jsb.read() == 1: btn = 0
         else: btn = 1
         return (h, v, btn)
+    
+    def getDirection(self):
+        x, y, _ = self.read()
+        if x < 100: return "RIGHT"
+        if x > 900: return "LEFT"
+        if y < 100: return "DOWM"
+        if y > 900: return "UP"
+        return "CENTER"      
 
 
 class RotaryEncoder:

@@ -1,51 +1,7 @@
 from machine import Pin, ADC, PWM, time_pulse_us
-from time import sleep, sleep_ms, sleep_us
+from utime import sleep, sleep_ms, sleep_us
+from urandom import randint
 
-CODE = {
-    'A' : '.-',
-    'B' : '-...',
-    'C' : '-.-.',
-    'D' : '-..',
-    'E' : '.',
-    'F' : '..-.',
-    'G' : '--.',
-    'H' : '....',
-    'I' : '..',
-    'J' : '.---',
-    'K' : '-.-',
-    'L' : '.-..',
-    'M' : '--',
-    'N' : '-.',
-    'O' : '---',
-    'P' : '.--.',
-    'Q' : '--.-',
-    'R' : '.-.',
-    'S' : '...',
-    'T' : '-',
-    'U' : '..-',
-    'V' : '...-',
-    'W' : '.--',
-    'X' : '-..-',
-    'Y' : '-.--',
-    'Z' : '--..',
-    '0' : '-----',
-    '1' : '.----',
-    '2' : '..---',
-    '3' : '...--',
-    '4' : '....-',
-    '5' : '.....',
-    '6' : '-....',
-    '7' : '--...',
-    '8' : '---..',
-    '9' : '----.',
-    '.' : '.-.-.-',
-    ',' : '--..--',
-    '?' : '..--..',
-    '/' : '--..-.',
-    '@' : '.--.-.',
-    '!' : '-.-.--',
-    ' ' : ' '
-}
 
 class GPIO:
     """
@@ -56,7 +12,7 @@ class GPIO:
     pin : machine.Pin, machine.ADC, or machine.PWM
         The pin object.
     mode : str
-        The mode of the pin (e.g., "OUT", "IN", "IN_PULLUP").
+        The mode of the pin (e.g., "OUT", "IN", "IN_PULLUP", "IN_PULLDOWN").
     pinType : str
         The type of the pin (e.g., "digital", "analog", "pwm").
     pinNumber : int
@@ -69,6 +25,9 @@ class GPIO:
     OUT = "OUT"
     IN = "IN"
     IN_PULLUP = "IN_PULLUP"
+    IN_PULLDOWN = "IN_PULLDOWN"
+    RISING = 0x0001
+    FALLING = 0x0002
 
     def __init__(self, pin, pinType=DIG, mode=None):
         """
@@ -93,6 +52,8 @@ class GPIO:
                 self.pin = Pin(pin, Pin.IN)
             elif mode == "IN_PULLUP":
                 self.pin = Pin(pin, Pin.IN, Pin.PULL_UP)
+            elif mode == "IN_PULLDOWN":
+                self.pin = Pin(pin, Pin.IN, Pin.PULL_DOWN)
         elif pinType == "analog":
             self.pin = ADC(pin)
         elif pinType == "pwm":
@@ -114,6 +75,8 @@ class GPIO:
                 self.pin.init(Pin.IN)
             elif mode == "IN_PULLUP":
                 self.pin.init(Pin.IN, Pin.PULL_UP)
+            elif mode == "IN_PULLDOWN":
+                self.pin.init(Pin.IN, Pin.PULL_DOWN)
         else:
             raise TypeError("Pin has to be set as digital")
     
@@ -163,9 +126,7 @@ class GPIO:
         """
         if self.pinType == "analog":
             return self.pin.read_u16()
-        elif self.pinType == "digital" and self.mode == "IN":
-            return self.pin.value()
-        elif self.pinType == "digital" and self.mode == "IN_PULLUP":
+        elif self.pinType == "digital" and (self.mode == "IN" or self.mode == "IN_PULLUP" or self.mode == "IN_PULLDOWN"):
             return self.pin.value()
         else:
             raise TypeError("Pin has to be either digital and set as IN or analog")
@@ -217,17 +178,20 @@ class GPIO:
         Parameters:
         -----------
         trigger : int
-            The type of trigger for the interrupt (e.g., Pin.IRQ_RISING, Pin.IRQ_FALLING, or Pin.IRQ_RISING | Pin.IRQ_FALLING).
+            The type of trigger for the interrupt (e.g., GPIO.RISING, GPIO.FALLING, or GPIO.RISING | GPIO.FALLING).
         callback : function
             The callback function to execute when the interrupt is triggered.
 
         Raises:
         -------
         TypeError
-            If the pin is not digital or set as IN/IN_PULLUP.
+            If the pin is not digital or set as IN/IN_PULLUP/IN_PULLDOWN.
         """
-        if self.pinType == GPIO.DIG and (self.mode == GPIO.IN or self.mode == GPIO.IN_PULLUP):
-            self.pin.irq(trigger=trigger, handler=callback)
+        if self.pinType == self.DIG and (self.mode == self.IN or self.mode == self.IN_PULLUP or self.mode == self.IN_PULLDOWN):
+            if trigger in (self.RISING, self.FALLING, self.RISING | self.FALLING):
+                self.pin.irq(trigger=trigger, handler=callback)
+            else:
+                raise ValueError("Provided trigger was invalid.")
         else:
             raise TypeError("Interrupts can only be attached to digital pins set as IN or IN_PULLUP.")
 
@@ -243,8 +207,56 @@ class LED:
     wpm : int
         Words per minute for Morse code.
     """
+    
+    CODE = {
+    'A' : '.-',
+    'B' : '-...',
+    'C' : '-.-.',
+    'D' : '-..',
+    'E' : '.',
+    'F' : '..-.',
+    'G' : '--.',
+    'H' : '....',
+    'I' : '..',
+    'J' : '.---',
+    'K' : '-.-',
+    'L' : '.-..',
+    'M' : '--',
+    'N' : '-.',
+    'O' : '---',
+    'P' : '.--.',
+    'Q' : '--.-',
+    'R' : '.-.',
+    'S' : '...',
+    'T' : '-',
+    'U' : '..-',
+    'V' : '...-',
+    'W' : '.--',
+    'X' : '-..-',
+    'Y' : '-.--',
+    'Z' : '--..',
+    '0' : '-----',
+    '1' : '.----',
+    '2' : '..---',
+    '3' : '...--',
+    '4' : '....-',
+    '5' : '.....',
+    '6' : '-....',
+    '7' : '--...',
+    '8' : '---..',
+    '9' : '----.',
+    '.' : '.-.-.-',
+    ',' : '--..--',
+    '?' : '..--..',
+    '/' : '--..-.',
+    '@' : '.--.-.',
+    '!' : '-.-.--',
+    ' ' : ' '
+    }
+    DIG = "digital"
+    PWM = "pwm"
 
-    def __init__(self, pin, pinType=GPIO.DIG, freq=1000):
+    def __init__(self, pin, pinType=DIG, freq=1000):
         """
         Initialize the LED.
 
@@ -257,12 +269,27 @@ class LED:
         freq : int, optional
             The PWM frequency (default is 1000).
         """
+        self.pinType = pinType
         self.wpm = 15
         if pinType == "digital":
             self.led = GPIO(pin, GPIO.DIG, mode="OUT")
         elif pinType == "pwm":
             self.led = GPIO(pin, GPIO.PWM)
             self.led.setFreq(freq)
+    
+    def on(self):
+        if self.led.pinType == "digital":
+            self.led.write(1)
+        elif self.led.pinType == "pwm":
+            self.led.write(1023)
+        else:
+            raise TypeError("Pin has to be digital or PWM")
+
+    def off(self):
+        if self.led.pinType in ("digital", "pwm"):
+            self.led.write(0)
+        else:
+            raise TypeError("Pin has to be digital or PWM")
     
     def flash(self, t=1):
         """
@@ -279,14 +306,10 @@ class LED:
         TypeError
             If the pin is not digital or PWM.
         """
-        if self.led.pinType == "digital":
-            self.led.write(1)
+        if self.led.pinType in ("digital", "pwm"):
+            self.on()
             sleep(t)
-            self.led.write(0)
-        elif self.led.pinType == "pwm":
-            self.led.write(1023)
-            sleep(t)
-            self.led.write(0)
+            self.off()
         else:
             raise TypeError("Pin has to be digital or PWM")
     
@@ -340,6 +363,15 @@ class LED:
         else:
             raise TypeError("Pin has to be PWM")
     
+    def write(self, value=None):
+        if self.pinType == "pwm":
+            if value > 1023 or value < 0:
+                raise ValueError("Duty cycle must be between 0 and 1023")
+            else:
+                self.led.write(value)
+        else:
+            raise TypeError("Pin has to be PWM")
+    
     def morsecode(self, msg="SOS"):
         """
         Flash the LED in Morse code.
@@ -348,24 +380,19 @@ class LED:
         -----------
         msg : str, optional
             The message to flash in Morse code (default is "SOS").
-
-        Raises:
-        -------
-        TypeError
-            If the pin is not digital or PWM.
         """
         tdot = 1.2/self.wpm
         tdash = tdot * 3.5
         tspace = tdot * 2
         tword = tdot * 6
         if self.led.pinType == "digital":
-            self.led.write(0)
+            self.off()
         elif self.led.pinType == "pwm":
-            self.led.write(0)
+            self.off()
         else:
             raise TypeError("Pin has to be digital or PWM")
         for l in msg:
-            c = CODE.get(l.upper())
+            c = self.CODE.get(l.upper())
             for e in c:
                 if e==".":
                     self.flash(tdot)
@@ -375,10 +402,8 @@ class LED:
                     sleep(tdot)
                 if e==" ": sleep(tword)
                 sleep(tword)
-        if self.led.pinType == "digital":
-            self.led.write(0)
-        elif self.led.pinType == "pwm":
-            self.led.write(0)
+        if self.led.pinType in ("digital", "pwm"):
+            self.off()
 
     def setMorseSpeed(self, speed):
         """
@@ -390,6 +415,97 @@ class LED:
             The speed of the Morse code in words per minute.
         """
         self.wpm = speed
+
+
+class RGB:
+    DIG = "digital"
+    PWM = "pwm"
+    COMM_ANODE = "ca"
+    COMM_CATHODE = "cc"
+    RED = "r"
+    GREEN = "g"
+    BLUE = "b"
+
+    def __init__(self, r, g, b, pinType=DIG, mode=COMM_CATHODE, freq=1000):
+        self.r = LED(r, pinType)
+        self.g = LED(g, pinType)
+        self.b = LED(b, pinType)
+        if pinType == self.PWM:
+            self.r.led.setFreq(freq)
+            self.g.led.setFreq(freq)
+            self.b.led.setFreq(freq)
+        self.pinType = pinType
+        self.mode = mode
+    
+    def flash(self, led, t=1):
+        if led in ("r", "g", "b"):
+            if led == "r":
+                self.r.on()
+                sleep(t)
+                self.r.off()
+            elif led == "g":
+                self.g.on()
+                sleep(t)
+                self.g.off()
+            elif led == "b":
+                self.b.on()
+                sleep(t)
+                self.b.off()
+        else:
+            raise TypeError("Provide RGB.RED / RGB.GREEN / RGB.BLUE")
+
+    def writeDig(self, r_val, g_val, b_val):
+        if self.pinType == "digital":
+
+            if self.mode == self.COMM_CATHODE:
+                if r_val == 1: self.r.on()
+                elif r_val == 0: self.r.off()
+                if g_val == 1: self.g.on()
+                elif g_val == 0: self.g.off()
+                if b_val == 1: self.b.on()
+                elif b_val == 0: self.b.off()
+            elif self.mode == self.COMM_ANODE:
+                if r_val == 1: self.r.off()
+                elif r_val == 0: self.r.on()
+                if g_val == 1: self.g.off()
+                elif g_val == 0: self.g.on()
+                if b_val == 1: self.b.off()
+                elif b_val == 0: self.b.on()
+            else:
+                raise ValueError("Invalid mode. Use RGBLED.COMM_CATHODE or RGBLED.COMM_ANODE.")
+        else:
+            raise TypeError("Pin type should be pwm")
+
+    def write(self, r_val, g_val, b_val):
+        if self.pinType == "pwm":
+            scale = lambda x: int(x * 1023 / 255)
+            r_pwm, g_pwm, b_pwm = map(scale, (r_val, g_val, b_val))
+            if self.mode == self.COMM_CATHODE:
+                self.r.write(r_pwm)
+                self.g.write(g_pwm)
+                self.b.write(b_pwm)
+            elif self.mode == self.COMM_ANODE:
+                self.r.write(1023 - r_pwm)
+                self.g.write(1023 - g_pwm)
+                self.b.write(1023 - b_pwm)
+            else:
+                raise ValueError("Invalid mode. Use RGBLED.COMM_CATHODE or RGBLED.COMM_ANODE.")
+        else:
+            raise TypeError("Pin type should be pwm")
+
+    def blink(self, r_val, g_val, b_val, t=1, n=1):
+        for _ in range(n):
+            self.write(r_val, g_val, b_val)
+            sleep(t)
+            if self.mode == self.COMM_CATHODE:
+                self.r.off()
+                self.g.off()
+                self.b.off()
+            elif self.mode == self.COMM_ANODE:
+                self.r.on()
+                self.g.on()
+                self.b.on()
+            sleep(t)
 
 
 class Servo:
@@ -696,7 +812,7 @@ class UltraSonic:
         self.trigger.write(0)
         self.echo = GPIO(echo_pin, GPIO.DIG, GPIO.IN)
 
-    def _sendPulseAndWait(self):
+    def _send_pulse_and_wait(self):
         # Send the pulse to trigger and listen on echo pin.
         self.trigger.write(0) # Stabilize the sensor
         sleep_us(5)
@@ -712,12 +828,12 @@ class UltraSonic:
                 raise OSError('Out of range')
             raise ex
 
-    def getDistanceMm(self):
+    def get_distance_mm(self):
         pulse_time = self._send_pulse_and_wait() 
         mm = pulse_time * 100 // 582
         return mm
 
-    def getDistanceCm(self):
+    def get_distance_cm(self):
         return (self.get_distance_mm()/10)
 
 
@@ -733,242 +849,207 @@ class Joystick:
         GPIO object for the Y-axis.
     jsb : GPIO
         GPIO object for the button.
-    deadzone : int
-        Deadzone threshold for the joystick.
-    sensitivityX : float
-        Sensitivity for the X-axis.
-    sensitivityY : float
-        Sensitivity for the Y-axis.
-    centerX : int
-        Calibrated center position for the X-axis.
-    centerY : int
-        Calibrated center position for the Y-axis.
-    moveCallback : function
-        Callback function for joystick movement.
-    buttonCallback : function
-        Callback function for button presses.
-    lastX : int
-        Last X-axis value to detect changes.
-    lastY : int
-        Last Y-axis value to detect changes.
-    lastBtn : int
-        Last button state to detect changes.
-    mapRange : tuple
-        Range to map joystick readings to (default is None).
     """
-
-    def __init__(self, x, y, btn, deadzone=100, mapRange=None):
-        """
-        Initialize the joystick.
-
-        Parameters:
-        -----------
-        x : int
-            Pin number for the X-axis.
-        y : int
-            Pin number for the Y-axis.
-        btn : int
-            Pin number for the button.
-        deadzone : int, optional
-            Deadzone threshold for the joystick (default is 100).
-        mapRange : tuple, optional
-            Range to map joystick readings to (e.g., (-1, 1), default is None).
-        """
+    def __init__(self, x, y, btn):
         self.jsx = GPIO(x, GPIO.ADC)
         self.jsy = GPIO(y, GPIO.ADC)
         self.jsb = GPIO(btn, GPIO.DIG, GPIO.IN_PULLUP)
-        self.deadzone = deadzone
-        self.sensitivityX = 1.0
-        self.sensitivityY = 1.0
-        self.centerX = 32768  # Assuming 16-bit ADC
-        self.centerY = 32768
-        self.moveCallback = None
-        self.buttonCallback = None
-        self.lastX = None
-        self.lastY = None
-        self.lastBtn = None
-        self.mapRange = mapRange
-
-    def mapValue(self, value, inMin, inMax, outMin, outMax):
-        """
-        Map a value from one range to another.
-
-        Parameters:
-        -----------
-        value : int
-            The value to map.
-        inMin : int
-            Minimum of the input range.
-        inMax : int
-            Maximum of the input range.
-        outMin : int
-            Minimum of the output range.
-        outMax : int
-            Maximum of the output range.
-
-        Returns:
-        --------
-        int
-            The mapped value.
-        """
-        return (value - inMin) * (outMax - outMin) // (inMax - inMin) + outMin
 
     def read(self):
+        h = self.jsx.read()
+        v = self.jsy.read()
+        if self.jsb.read() == 1: btn = 0
+        else: btn = 1
+        return (h, v, btn)
+
+
+class RotaryEncoder:
+    """
+    A class to represent a rotary encoder.
+
+    Attributes:
+    -----------
+    clk : GPIO
+        GPIO object for the CLK pin.
+    dt : GPIO
+        GPIO object for the DT pin.
+    sw : GPIO
+        GPIO object for the button pin.
+    rightHandler : function
+        Callback function for right rotation.
+    leftHandler : function
+        Callback function for left rotation.
+    buttonHandler : function
+        Callback function for button press.
+    """
+    def __init__(self, clkPin, dtPin, swPin):
         """
-        Read the joystick values.
-
-        Returns:
-        --------
-        tuple
-            The X and Y values and the button state.
-        """
-        x = self.jsx.read()
-        y = self.jsy.read()
-        btn = self.jsb.read()
-
-        if self.mapRange:
-            x = self.mapValue(x, 0, 65535, self.mapRange[0], self.mapRange[1])
-            y = self.mapValue(y, 0, 65535, self.mapRange[0], self.mapRange[1])
-
-        self.poll(x, y, btn)
-        return (x, y, btn)
-
-    def applyDeadzone(self, value):
-        """
-        Apply the deadzone to a joystick axis value.
+        Initialize the rotary encoder.
 
         Parameters:
         -----------
-        value : int
-            The raw value from the joystick axis.
-
-        Returns:
-        --------
-        int
-            The adjusted value after applying the deadzone.
+        clkPin : int
+            Pin number for the CLK pin.
+        dtPin : int
+            Pin number for the DT pin.
+        swPin : int
+            Pin number for the button pin.
         """
-        if abs(value - 32768) < self.deadzone:
-            return 32768
-        return value
+        self.clk = GPIO(clkPin, GPIO.DIG, GPIO.IN_PULLUP)
+        self.dt = GPIO(dtPin, GPIO.DIG, GPIO.IN_PULLUP)
+        self.sw = GPIO(swPin, GPIO.DIG, GPIO.IN_PULLUP)
+        
+        self.lastClkState = self.clk.read()
+        self.lastDtState = self.dt.read()
+        
+        self.clk.attachInterrupt(trigger=GPIO.FALLING | GPIO.RISING, callback=self._clkHandler)
+        self.dt.attachInterrupt(trigger=GPIO.FALLING | GPIO.RISING, callback=self._dtHandler)
+        self.sw.attachInterrupt(trigger=GPIO.FALLING | GPIO.RISING, callback=self._swHandler)
+        
+        self.rightHandler = None
+        self.leftHandler = None
+        self.buttonHandler = None
 
-    def isButtonPressed(self):
-        """
-        Check if the joystick button is pressed with debouncing.
+    def _clkHandler(self, pin):
+        clkState = self.clk.read()
+        if self.dt.read() == clkState:  # Right rotation
+            if self.leftHandler:
+                self.leftHandler()
+        else:  # Left rotation
+            if self.rightHandler:
+                self.rightHandler()
+        
+        self.lastClkState = clkState
 
-        Returns:
-        --------
-        bool
-            True if the button is pressed, False otherwise.
-        """
-        state = self.jsb.read()
-        sleep_ms(10)  # Debounce delay
-        return state == 0 and self.jsb.read() == 0
+    def _dtHandler(self, pin):
+        # This will be called when the DT pin changes state
+        pass  # We don't need to do anything here, as we are handling the rotation in the _clkHandler
 
-    def getDirection(self):
-        """
-        Get the direction of the joystick.
+    def _swHandler(self, pin):
+        if self.buttonHandler:
+            self.buttonHandler()
 
-        Returns:
-        --------
-        str
-            The direction of the joystick ("UP", "DOWN", "LEFT", "RIGHT", "CENTER").
+    def onRight(self, handler):
         """
-        x = self.applyDeadzone(self.jsx.read())
-        y = self.applyDeadzone(self.jsy.read())
-
-        if y > 40000: return "UP"
-        if y < 25000: return "DOWN"
-        if x > 40000: return "RIGHT"
-        if x < 25000: return "LEFT"
-        return "CENTER"
-
-    def calibrate(self):
-        """
-        Calibrate the joystick by setting the center position.
-        """
-        self.centerX = self.jsx.read()
-        self.centerY = self.jsy.read()
-
-    def readCalibrated(self):
-        """
-        Read the joystick values relative to the calibrated center.
-
-        Returns:
-        --------
-        tuple
-            The calibrated X and Y values.
-        """
-        x = self.jsx.read() - self.centerX
-        y = self.jsy.read() - self.centerY
-        return (x, y)
-
-    def onMove(self, callback):
-        """
-        Set a callback function for joystick movement.
+        Set the callback function for right rotation.
 
         Parameters:
         -----------
-        callback : function
-            The function to call when the joystick moves.
+        handler : function
+            The callback function to execute on right rotation.
         """
-        self.moveCallback = callback
+        self.rightHandler = handler
 
-    def onButtonPress(self, callback):
+    def onLeft(self, handler):
         """
-        Set a callback function for button presses.
-
-        Parameters:
-        -----------
-        callback : function
-            The function to call when the button is pressed.
-        """
-        self.buttonCallback = callback
-
-    def poll(self, x, y, btn):
-        """
-        Poll the joystick for changes and trigger callbacks.
+        Set the callback function for left rotation.
 
         Parameters:
         -----------
-        x : int
-            Current X-axis value.
-        y : int
-            Current Y-axis value.
-        btn : int
-            Current button state.
+        handler : function
+            The callback function to execute on left rotation.
         """
-        if (x != self.lastX or y != self.lastY) and self.moveCallback:
-            self.moveCallback(x, y)
-        if btn != self.lastBtn and self.buttonCallback and btn == 1:
-            self.buttonCallback()
+        self.leftHandler = handler
 
-        self.lastX = x
-        self.lastY = y
-        self.lastBtn = btn
-
-    def setSensitivity(self, sensitivityX=1.0, sensitivityY=1.0):
+    def onButtonPress(self, handler):
         """
-        Set the sensitivity for the joystick axes.
+        Set the callback function for button press.
 
         Parameters:
         -----------
-        sensitivityX : float, optional
-            Sensitivity for the X-axis (default is 1.0).
-        sensitivityY : float, optional
-            Sensitivity for the Y-axis (default is 1.0).
+        handler : function
+            The callback function to execute on button press.
         """
-        self.sensitivityX = sensitivityX
-        self.sensitivityY = sensitivityY
+        self.buttonHandler = handler
 
-    def readWithSensitivity(self):
-        """
-        Read the joystick values with sensitivity applied.
 
-        Returns:
-        --------
-        tuple
-            The adjusted X and Y values.
+class SevenSegment:
+    """
+    A class to represent a 7-segment display.
+
+    Attributes:
+    -----------
+    segments : list
+        List of GPIO objects for each segment.
+    common_anode : bool
+        True if the display is common anode, False if common cathode.
+    """
+    SEGMENT_MAP = {
+    0: [1, 1, 1, 1, 1, 1, 0],
+    1: [0, 1, 1, 0, 0, 0, 0],
+    2: [1, 1, 0, 1, 1, 0, 1],
+    3: [1, 1, 1, 1, 0, 0, 1],
+    4: [0, 1, 1, 0, 0, 1, 1],
+    5: [1, 0, 1, 1, 0, 1, 1],
+    6: [1, 0, 1, 1, 1, 1, 1],
+    7: [1, 1, 1, 0, 0, 0, 0],
+    8: [1, 1, 1, 1, 1, 1, 1],
+    9: [1, 1, 1, 1, 0, 1, 1],
+    }
+
+    def __init__(self, segment_pins, common_anode=True):
+        self.segments = [GPIO(pin, GPIO.DIG, GPIO.OUT) for pin in segment_pins]
+        self.common_anode = common_anode
+
+    def display(self, digit):
         """
-        x = self.jsx.read() * self.sensitivityX
-        y = self.jsy.read() * self.sensitivityY
-        return (x, y)
+        Display a digit on the 7-segment display.
+
+        Parameters:
+        -----------
+        digit : int
+            The digit to display (0-9).
+        """
+        if digit not in self.SEGMENT_MAP:
+            return
+        pattern = self.SEGMENT_MAP[digit]
+        if not self.common_anode:
+            for i in range(len(pattern)):
+                self.segments[i].write(pattern[digit][i])
+        else:
+            for i in range(len(pattern)):
+                self.segments[i].write(int(not pattern[i]))
+
+    def clear(self):
+        """
+        Clear the 7-segment display.
+        """
+        for seg in self.segments:
+            seg.value(1 if self.common_anode else 0)
+
+    def random(self):
+        """
+        Display a random digit on the 7-segment display.
+        """
+        num = randint(0, 9)
+        self.display(num)
+    
+    def countup(self, count=10, t=1):
+        """
+        Count up on the 7-segment display.
+
+        Parameters:
+        -----------
+        count : int, optional
+            The number to count up to (default is 10).
+        t : int, optional
+            The delay between counts in seconds (default is 1).
+        """
+        for i in range(count):
+            self.display(i)
+            sleep(1)
+
+    def countdown(self, count=10, t=1):
+        """
+        Count down on the 7-segment display.
+
+        Parameters:
+        -----------
+        count : int, optional
+            The number to count down from (default is 10).
+        t : int, optional
+            The delay between counts in seconds (default is 1).
+        """
+        for i in range(count, 0, -1):
+            self.display(i)
+            sleep(1)

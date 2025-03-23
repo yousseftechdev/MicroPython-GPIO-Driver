@@ -51,10 +51,10 @@ The `LED` class allows you to control an LED with digital or PWM pins.
 from gpio import LED
 
 # Digital LED
-led = LED(14, GPIO.DIG)
+led = LED(14, LED.DIG)
 
 # PWM LED
-pwmLed = LED(25, GPIO.PWM)
+pwmLed = LED(25, LED.PWM)
 ```
 
 #### Methods

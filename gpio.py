@@ -276,6 +276,25 @@ class LED:
         elif pinType == "pwm":
             self.led = GPIO(pin, GPIO.PWM)
             self.led.setFreq(freq)
+            
+    def setFreq(self, freq=1000):
+        """
+        Set the frequency for a PWM pin.
+
+        Parameters:
+        -----------
+        freq : int, optional
+            The frequency in Hz (default is 1000).
+
+        Raises:
+        -------
+        TypeError
+            If the pin is not a PWM pin.
+        """
+        if self.led.pinType == "pwm":
+            self.led.setFreq(freq)
+        else:
+            raise TypeError("Pin has to be PWM")
     
     def on(self):
         if self.led.pinType == "digital":
@@ -422,35 +441,32 @@ class RGB:
     PWM = "pwm"
     COMM_ANODE = "ca"
     COMM_CATHODE = "cc"
-    RED = "r"
-    GREEN = "g"
-    BLUE = "b"
 
     def __init__(self, r, g, b, pinType=DIG, mode=COMM_CATHODE, freq=1000):
-        self.r = LED(r, pinType)
-        self.g = LED(g, pinType)
-        self.b = LED(b, pinType)
+        self.RED = LED(r, pinType)
+        self.GREEN = LED(g, pinType)
+        self.BLUE = LED(b, pinType)
         if pinType == self.PWM:
-            self.r.led.setFreq(freq)
-            self.g.led.setFreq(freq)
-            self.b.led.setFreq(freq)
+            self.RED.setFreq(freq)
+            self.GREEN.setFreq(freq)
+            self.BLUE.setFreq(freq)
         self.pinType = pinType
         self.mode = mode
     
     def flash(self, led, t=1):
-        if led in ("r", "g", "b"):
-            if led == "r":
-                self.r.on()
+        if led in (self.RED, self.GREEN, self.BLUE):
+            if led == self.RED:
+                self.RED.on()
                 sleep(t)
-                self.r.off()
-            elif led == "g":
-                self.g.on()
+                self.RED.off()
+            elif led == self.GREEN:
+                self.GREEN.on()
                 sleep(t)
-                self.g.off()
-            elif led == "b":
-                self.b.on()
+                self.GREEN.off()
+            elif led == self.BLUE:
+                self.BLUE.on()
                 sleep(t)
-                self.b.off()
+                self.BLUE.off()
         else:
             raise TypeError("Provide RGB.RED / RGB.GREEN / RGB.BLUE")
 
@@ -458,19 +474,19 @@ class RGB:
         if self.pinType == "digital":
 
             if self.mode == self.COMM_CATHODE:
-                if r_val == 1: self.r.on()
-                elif r_val == 0: self.r.off()
-                if g_val == 1: self.g.on()
-                elif g_val == 0: self.g.off()
-                if b_val == 1: self.b.on()
-                elif b_val == 0: self.b.off()
+                if r_val == 1: self.RED.on()
+                elif r_val == 0: self.RED.off()
+                if g_val == 1: self.GREEN.on()
+                elif g_val == 0: self.GREEN.off()
+                if b_val == 1: self.BLUE.on()
+                elif b_val == 0: self.BLUE.off()
             elif self.mode == self.COMM_ANODE:
-                if r_val == 1: self.r.off()
-                elif r_val == 0: self.r.on()
-                if g_val == 1: self.g.off()
-                elif g_val == 0: self.g.on()
-                if b_val == 1: self.b.off()
-                elif b_val == 0: self.b.on()
+                if r_val == 1: self.RED.off()
+                elif r_val == 0: self.RED.on()
+                if g_val == 1: self.GREEN.off()
+                elif g_val == 0: self.GREEN.on()
+                if b_val == 1: self.BLUE.off()
+                elif b_val == 0: self.BLUE.on()
             else:
                 raise ValueError("Invalid mode. Use RGBLED.COMM_CATHODE or RGBLED.COMM_ANODE.")
         else:
@@ -481,13 +497,13 @@ class RGB:
             scale = lambda x: int(x * 1023 / 255)
             r_pwm, g_pwm, b_pwm = map(scale, (r_val, g_val, b_val))
             if self.mode == self.COMM_CATHODE:
-                self.r.write(r_pwm)
-                self.g.write(g_pwm)
-                self.b.write(b_pwm)
+                self.RED.write(r_pwm)
+                self.GREEN.write(g_pwm)
+                self.BLUE.write(b_pwm)
             elif self.mode == self.COMM_ANODE:
-                self.r.write(1023 - r_pwm)
-                self.g.write(1023 - g_pwm)
-                self.b.write(1023 - b_pwm)
+                self.RED.write(1023 - r_pwm)
+                self.GREEN.write(1023 - g_pwm)
+                self.BLUE.write(1023 - b_pwm)
             else:
                 raise ValueError("Invalid mode. Use RGBLED.COMM_CATHODE or RGBLED.COMM_ANODE.")
         else:
@@ -498,13 +514,13 @@ class RGB:
             self.write(r_val, g_val, b_val)
             sleep(t)
             if self.mode == self.COMM_CATHODE:
-                self.r.off()
-                self.g.off()
-                self.b.off()
+                self.RED.off()
+                self.GREEN.off()
+                self.BLUE.off()
             elif self.mode == self.COMM_ANODE:
-                self.r.on()
-                self.g.on()
-                self.b.on()
+                self.RED.on()
+                self.GREEN.on()
+                self.BLUE.on()
             sleep(t)
 
 
@@ -560,7 +576,7 @@ class Servo:
         self.maxAngle = maxAngle
         self.angle = 90  # Current angle
         self.speed = 1
-        self.reset()
+        self.REDeset()
 
     def _angleToDuty(self, angle):
         """
@@ -754,7 +770,7 @@ class StepperULN:
         self.pin4 = GPIO(pin4, GPIO.DIG, GPIO.OUT)
         self.delay = delay
         
-        self.reset()
+        self.REDeset()
         
     def step(self, count, direction=1):
         """
@@ -777,7 +793,7 @@ class StepperULN:
                 self.pin3.write(bit[2])
                 self.pin4.write(bit[3])
                 sleep_ms(self.delay)
-        self.reset()
+        self.REDeset()
 
     def angle(self, r, direction=1):
         """
@@ -852,7 +868,7 @@ class UltraSonic:
         return mm
 
     def getDistanceCm(self):
-        return (self.getDistanceMm()/10)
+        return (self.GREENetDistanceMm()/10)
 
 
 class Joystick:
@@ -885,7 +901,7 @@ class Joystick:
         return (h, v, btn)
     
     def getDirection(self):
-        x, y, _ = self.read()
+        x, y, _ = self.REDead()
         if x < 100: return "RIGHT"
         if x > 900: return "LEFT"
         if y < 100: return "DOWM"
@@ -936,9 +952,9 @@ class RotaryEncoder:
         self.dt.attachInterrupt(trigger=GPIO.FALLING | GPIO.RISING, callback=self._dtHandler)
         self.sw.attachInterrupt(trigger=GPIO.FALLING | GPIO.RISING, callback=self._swHandler)
         
-        self.rightHandler = None
+        self.REDightHandler = None
         self.leftHandler = None
-        self.buttonHandler = None
+        self.BLUEuttonHandler = None
 
     def _clkHandler(self, pin):
         clkState = self.clk.read()
@@ -946,8 +962,8 @@ class RotaryEncoder:
             if self.leftHandler:
                 self.leftHandler()
         else:  # Left rotation
-            if self.rightHandler:
-                self.rightHandler()
+            if self.REDightHandler:
+                self.REDightHandler()
         
         self.lastClkState = clkState
 
@@ -956,8 +972,8 @@ class RotaryEncoder:
         pass  # We don't need to do anything here, as we are handling the rotation in the _clkHandler
 
     def _swHandler(self, pin):
-        if self.buttonHandler:
-            self.buttonHandler()
+        if self.BLUEuttonHandler:
+            self.BLUEuttonHandler()
 
     def onRight(self, handler):
         """
@@ -968,7 +984,7 @@ class RotaryEncoder:
         handler : function
             The callback function to execute on right rotation.
         """
-        self.rightHandler = handler
+        self.REDightHandler = handler
 
     def onLeft(self, handler):
         """
@@ -990,7 +1006,7 @@ class RotaryEncoder:
         handler : function
             The callback function to execute on button press.
         """
-        self.buttonHandler = handler
+        self.BLUEuttonHandler = handler
 
 
 class SevenSegment:

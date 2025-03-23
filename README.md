@@ -29,6 +29,18 @@ adc = GPIO(35, GPIO.ADC)
 pwmLed = GPIO(25, GPIO.PWM)
 ```
 
+#### Constants
+
+- `GPIO.DIG`: Used to specify the pin type as digital.
+- `GPIO.ADC`: Used to specify the pin type as analog input.
+- `GPIO.PWM`: Used to specify the pin type as PWM.
+- `GPIO.OUT`: Used to specify the pin mode as output.
+- `GPIO.IN`: Used to specify the pin mode as input.
+- `GPIO.IN_PULLUP`: Used to specify the pin mode as input with pull-up resistor.
+- `GPIO.IN_PULLDOWN`: Used to specify the pin mode as input with pull-down resistor.
+- `GPIO.RISING`: Used to specify a rising edge interrupt trigger.
+- `GPIO.FALLING`: Used to specify a falling edge interrupt trigger.
+
 #### Methods
 
 - `init(mode=None)`: Reinitialize the GPIO pin with a new mode.
@@ -57,6 +69,11 @@ led = LED(14, LED.DIG)
 pwmLed = LED(25, LED.PWM)
 ```
 
+#### Constants
+
+- `LED.DIG`: Used to specify the LED type as digital.
+- `LED.PWM`: Used to specify the LED type as PWM.
+
 #### Methods
 
 - `on()`: Turn the LED on.
@@ -84,8 +101,17 @@ from gpio import RGB
 rgb = RGB(r=14, g=15, b=16, pinType=RGB.PWM, mode=RGB.COMM_CATHODE)
 ```
 
+#### Constants
+
+- `RGB.DIG`: Used to specify the LED type as digital.
+- `RGB.PWM`: Used to specify the LED type as PWM.
+- `RGB.COMM_ANODE`: Used to specify the RGB LED as common anode.
+- `RGB.COMM_CATHODE`: Used to specify the RGB LED as common cathode.
+
 #### Methods
 
+- `RGB.RED.on() / RGB.GREEN.on() / RGB.BLUE.on()`: Turn on the specified color.
+- `RGB.RED.off() / RGB.GREEN.off() / RGB.BLUE.off()`: Turn off the specified color.
 - `flash(led, t=1)`: Flash a specific LED (`RGB.RED`, `RGB.GREEN`, or `RGB.BLUE`) for `t` seconds.
 - `writeDig(r_val, g_val, b_val)`: Write digital values to the RGB LED.
 - `write(r_val, g_val, b_val)`: Write PWM values to the RGB LED.
@@ -106,10 +132,15 @@ from gpio import Servo
 servo = Servo(16)
 ```
 
+#### Constants
+
+- `Servo.ABS`: Used to specify absolute movement mode.
+- `Servo.REL`: Used to specify relative movement mode.
+
 #### Methods
 
 - `move(targetAngle)`: Move the servo to the target angle.
-- `setMode(mode)`: Sets the movement mode of the servo. Takes either `Servo.ABS` or `Servo.REL` as args.
+- `setMode(mode)`: Set the movement mode of the servo (`Servo.ABS` or `Servo.REL`).
 - `reset()`: Reset the servo to the 0-degree position.
 - `mid()`: Move the servo to the middle position.
 - `max()`: Move the servo to the max degree position.
@@ -152,6 +183,11 @@ from gpio import StepperULN
 stepperULN = StepperULN(pin1=25, pin2=26, pin3=27, pin4=28, delay=5, mode=StepperULN.HALFSTEP)
 ```
 
+#### Constants
+
+- `StepperULN.FULLSTEP`: Used to specify full-step mode.
+- `StepperULN.HALFSTEP`: Used to specify half-step mode.
+
 #### Methods
 
 - `step(count, direction=1)`: Move the motor by a specified number of steps.
@@ -177,6 +213,8 @@ ultraSonic = UltraSonic(triggerPin=20, echoPin=21)
 - `getDistanceMm()`: Get the distance in millimeters.
 - `getDistanceCm()`: Get the distance in centimeters.
 
+---
+
 ### Joystick Class
 
 The `Joystick` class allows you to read values from a joystick.
@@ -192,7 +230,7 @@ joystick = Joystick(x=22, y=23, btn=24)
 #### Methods
 
 - `read()`: Read the joystick's X, Y, and button states. Returns a tuple `(x, y, btn)`.
-- `getDirection()`: Get the direction of the joystick. Returns `UP/DOWN/LEFT/RIGHT/MIDDLE`.
+- `getDirection()`: Get the direction of the joystick. Returns `UP/DOWN/LEFT/RIGHT/CENTER`.
 
 ---
 
